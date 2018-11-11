@@ -77,6 +77,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 	tweenMaster.DontUpdate = {} -- table of specific players that it stopped for part way.
 	tInfo = TweenInfo_To_Table(tInfo)
 	function tweenMaster:Play(Yield, SpecificClient)
+		tweenMaster.Paused = false
 		if SpecificClient == nil then
 			tEvent:FireAllClients("RunTween", instance, tInfo, propertyTable)
 		else
@@ -85,19 +86,23 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 		if Yield then
 			local i = 0
 			repeat wait(1) i = i + 1 until i ==  tInfo[1] or tweenMaster.Stopped
-			serverAssignProperties(instance, propertyTable) -- assign the properties server side
+			if tweenMaster.Paused == nil or tweenMaster.Paused == false then
+				serverAssignProperties(instance, propertyTable) -- assign the properties server side
+			end
 			return
 		else
 			spawn(function()
 				local i = 0
 				repeat wait(1) i = i + 1 until i == tInfo[1] or tweenMaster.Stopped
-				serverAssignProperties(instance, propertyTable) -- assign the properties server side
+				if tweenMaster.Paused == nil or tweenMaster.Paused == false then
+					serverAssignProperties(instance, propertyTable) -- assign the properties server side
+				end
 			end)
 		end
 	end
 	function tweenMaster:Pause(SpecificClient)
 		if SpecificClient == nil then
-			tweenMaster.Stopped = true
+			tweenMaster.Paused = true
 			tEvent:FireAllClients("PauseTween", instance)
 		else
 			table.insert(tweenMaster.DontUpdate, SpecificClient)
