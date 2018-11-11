@@ -43,6 +43,8 @@ local tEvent
 if tEvent == nil and rService:IsServer() then
 	tEvent = Instance.new("RemoteEvent", script)
 	tEvent.Name = "TweenEvent"
+else
+	tEvent = script:WaitForChild("TweenEvent")
 end
 
 
