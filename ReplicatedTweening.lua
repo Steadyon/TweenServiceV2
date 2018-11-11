@@ -45,6 +45,7 @@ local module = {}
 local tService = game:GetService("TweenService")
 local rService = game:GetService("RunService")
 local tEvent
+
 if tEvent == nil and rService:IsServer() then
 	tEvent = Instance.new("RemoteEvent", script)
 	tEvent.Name = "TweenEvent"
@@ -54,25 +55,24 @@ end
 
 
 function TweenInfo_To_Table(tInfo)
-	local info = {}
-	info[1] = tInfo.Time or 1
-	info[2] = tInfo.EasingStyle or Enum.EasingStyle.Quad
-	info[3] = tInfo.EasingDirection or Enum.EasingDirection.Out
-	info[4] = tInfo.RepeatCount or 0
-	info[5] = tInfo.Reverses or false
-	info[6] = tInfo.DelayTime or 0
-	return info
+	return {
+		 tInfo.Time or 1,
+		 tInfo.EasingStyle or Enum.EasingStyle.Quad,
+		 tInfo.EasingDirection or Enum.EasingDirection.Out,
+		 tInfo.RepeatCount or 0,
+		 tInfo.Reverses or false,
+		 tInfo.DelayTime or 0
+	}
 end
 
 function Table_To_TweenInfo(tbl)
-	local tInfo = TweenInfo.new(tbl[1], tbl[2], tbl[3], tbl[4], tbl[5], tbl[6])
-	return tInfo
+	return TweenInfo.new(table.unpack(tbl))
 end
 
 function serverAssignProperties(instance, properties)
 	print("Assigning properties")
 	for property, value in pairs (properties) do
-		print("Assigned",property,"to",value)
+		print("Assigned", property, "to", value)
 		instance[property] = value
 	end
 end
@@ -81,8 +81,10 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 	local tweenMaster = {}
 	tweenMaster.DontUpdate = {} -- table of specific players that it stopped for part way.
 	tInfo = TweenInfo_To_Table(tInfo)
+
 	function tweenMaster:Play(Yield, SpecificClient)
 		tweenMaster.Paused = false
+
 		if SpecificClient == nil then
 			tEvent:FireAllClients("RunTween", instance, tInfo, propertyTable)
 		else
@@ -105,6 +107,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 			end)
 		end
 	end
+
 	function tweenMaster:Pause(SpecificClient)
 		if SpecificClient == nil then
 			tweenMaster.Paused = true
@@ -114,6 +117,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 			tEvent:FireClient("PauseTween", instance)
 		end
 	end
+
 	function tweenMaster:Stop(SpecificClient)
 		if SpecificClient == nil then
 			tweenMaster.Stopped = true
@@ -128,6 +132,7 @@ end
 
 if rService:IsClient() then -- OnClientEvent only works clientside
 	local runningTweens = {}
+
 	tEvent.OnClientEvent:Connect(function(purpose, instance, tInfo, propertyTable)
 			if tInfo ~= nil then
 				tInfo = Table_To_TweenInfo(tInfo)
