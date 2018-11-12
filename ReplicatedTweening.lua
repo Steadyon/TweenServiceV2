@@ -48,7 +48,7 @@ else
 end
 
 
-function TweenInfo_To_Table(tInfo)
+local function TweenInfo_To_Table(tInfo)
 	local info = {}
 	info[1] = tInfo.Time or 1 
 	info[2] = tInfo.EasingStyle or Enum.EasingStyle.Quad
@@ -59,12 +59,12 @@ function TweenInfo_To_Table(tInfo)
 	return info
 end
 
-function Table_To_TweenInfo(tbl)
+local function Table_To_TweenInfo(tbl)
 	local tInfo = TweenInfo.new(tbl[1], tbl[2], tbl[3], tbl[4], tbl[5], tbl[6])
 	return tInfo
 end
 
-function serverAssignProperties(instance, properties)
+local function serverAssignProperties(instance, properties)
 	print("Assigning properties")
 	for property, value in pairs (properties) do
 		print("Assigned",property,"to",value)
