@@ -85,7 +85,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 		end
 		if Yield then
 			local i = 0
-			repeat wait(1) i = i + 1 until i ==  tInfo[1] or tweenMaster.Stopped
+			repeat wait(1) i = i + 1 until i >= tInfo[1] or tweenMaster.Stopped
 			if tweenMaster.Paused == nil or tweenMaster.Paused == false then
 				serverAssignProperties(instance, propertyTable) -- assign the properties server side
 			end
@@ -93,7 +93,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 		else
 			spawn(function()
 				local i = 0
-				repeat wait(1) i = i + 1 until i == tInfo[1] or tweenMaster.Stopped
+				repeat wait(1) i = i + 1 until i >= tInfo[1] or tweenMaster.Stopped
 				if tweenMaster.Paused == nil or tweenMaster.Paused == false then
 					serverAssignProperties(instance, propertyTable) -- assign the properties server side
 				end
