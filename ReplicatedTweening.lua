@@ -65,17 +65,6 @@ local function TweenInfo_To_Table(tInfo)
 end
 
 local function Table_To_TweenInfo(tbl)
-	return {
-		 tInfo.Time or 1,
-		 tInfo.EasingStyle or Enum.EasingStyle.Quad,
-		 tInfo.EasingDirection or Enum.EasingDirection.Out,
-		 tInfo.RepeatCount or 0,
-		 tInfo.Reverses or false,
-		 tInfo.DelayTime or 0
-	}
-end
-
-function Table_To_TweenInfo(tbl)
 	return TweenInfo.new(table.unpack(tbl))
 end
 
