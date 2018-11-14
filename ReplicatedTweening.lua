@@ -64,8 +64,8 @@ local function TweenInfo_To_Table(tInfo)
 	return info
 end
 
-local function Table_To_TweenInfo(tbl)
-	return TweenInfo.new(table.unpack(tbl))
+function Table_To_TweenInfo(tbl)
+	return TweenInfo.new(unpack(tbl))
 end
 
 local function serverAssignProperties(instance, properties)
