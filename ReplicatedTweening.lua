@@ -53,8 +53,18 @@ else
 	tEvent = script:WaitForChild("TweenEvent")
 end
 
+local function TweenInfo_To_Table(tInfo)
+	local info = {}
+	info[1] = tInfo.Time or 1 
+	info[2] = tInfo.EasingStyle or Enum.EasingStyle.Quad
+	info[3] = tInfo.EasingDirection or Enum.EasingDirection.Out
+	info[4] = tInfo.RepeatCount or 0
+	info[5] = tInfo.Reverses or false
+	info[6] = tInfo.DelayTime or 0
+	return info
+end
 
-function TweenInfo_To_Table(tInfo)
+local function Table_To_TweenInfo(tbl)
 	return {
 		 tInfo.Time or 1,
 		 tInfo.EasingStyle or Enum.EasingStyle.Quad,
@@ -69,7 +79,7 @@ function Table_To_TweenInfo(tbl)
 	return TweenInfo.new(table.unpack(tbl))
 end
 
-function serverAssignProperties(instance, properties)
+local function serverAssignProperties(instance, properties)
 	print("Assigning properties")
 	for property, value in pairs (properties) do
 		print("Assigned", property, "to", value)
