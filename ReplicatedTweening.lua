@@ -12,12 +12,19 @@
 	Tween:Play(Yield [Boolean, optional], Player [Player Object, optional])
 	Runs the tween. The player parameter will only play the tween for that specific player.
 	The Yield parameter specifies whether the function should yield until the tween has completed or not.
+	
+	Tween:QueuePlay(Yield [Boolean, optional], Player [Player Object, optional]) - Add the tween to a tween queue which will start
+	playing the queue automatically immediately after the previous tween on that instance completes. Behaves exactly the same way as 
+	Tween:Play() once started, except the initial firing of the tween is managed on the client. For this reason, best practice is to
+	fire this event as close to when you would like it to be played on the client to maintain alignment between tweens. If fired 
+	multiple times in a short time frame, this may result in clients becoming out of sync over time.
 
 	Tween:Stop(Player [Player Object, optional])
 	Stops the tween. The player parameter will only stop the tween for that specific player.
 
 	Tween:Pause(Player [Player Object, optional])
 	Pauses the tween. The player parameter will only pause the tween for that specific player.
+	
 
 	Tutorial:
 
@@ -64,7 +71,7 @@ local function TweenInfo_To_Table(tInfo)
 	return info
 end
 
-function Table_To_TweenInfo(tbl)
+local function Table_To_TweenInfo(tbl)
 	return TweenInfo.new(unpack(tbl))
 end
 
@@ -76,35 +83,63 @@ local function serverAssignProperties(instance, properties)
 	end
 end
 
+local latestFinish = {} -- this table operates on both the client and the server, server side it only stores GLOBAL tweens, local side it stores every local tween.
+
 function module:GetTweenObject(instance, tInfo, propertyTable)
 	local tweenMaster = {}
 	tweenMaster.DontUpdate = {} -- table of specific players that it stopped for part way.
 	tInfo = TweenInfo_To_Table(tInfo)
-
-	function tweenMaster:Play(Yield, SpecificClient)
+	
+	local function Play(Yield, SpecificClient, Queue) -- this is on it's own as it needs to be called by both QueuePlay and Play
+		local finishTime = os.time()+tInfo[1]
+		local waitTime = tInfo[1]
+		latestFinish[instance] = latestFinish[instance] or os.time() -- cannot be nil.
+		Queue = Queue or false
 		tweenMaster.Paused = false
-
-		if SpecificClient == nil then
+		
+		if SpecificClient == nil and not Queue then
+			latestFinish[instance] = finishTime -- adds an entry to array with finish time of this tween (used for queueing)
 			tEvent:FireAllClients("RunTween", instance, tInfo, propertyTable)
+		elseif Queue and SpecificClient == nil then -- deal with queued tweens
+			waitTime = waitTime + (latestFinish[instance] - os.time())
+			latestFinish[instance] = finishTime + (latestFinish[instance] - os.time()) -- adds an entry to array with finish time of this tween (used for queueing)
+			tEvent:FireAllClients("QueueTween", instance, tInfo, propertyTable)
+		elseif Queue then
+			tEvent:FireClient("QueueTween", instance, tInfo, propertyTable) -- queue tween for specific player
 		else
-			tEvent:FireClient("RunTween", instance, tInfo, propertyTable)
+			tEvent:FireClient("RunTween", instance, tInfo, propertyTable) -- play tween for specific player
 		end
-		if Yield then
-			local i = 0
-			repeat wait(1) i = i + 1 until i >= tInfo[1] or tweenMaster.Stopped
+		
+		if Yield and SpecificClient == nil then
+			local i, existingFinish = 0, latestFinish[instance]
+			repeat wait(1) i = i + 1 until i >= waitTime or tweenMaster.Stopped
+			if latestFinish[instance] == existingFinish then
+				latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
+			end
 			if tweenMaster.Paused == nil or tweenMaster.Paused == false then
 				serverAssignProperties(instance, propertyTable) -- assign the properties server side
 			end
 			return
-		else
+		elseif SpecificClient == nil then
 			spawn(function()
-				local i = 0
-				repeat wait(1) i = i + 1 until i >= tInfo[1] or tweenMaster.Stopped
+				local i, existingFinish = 0, latestFinish[instance]
+				repeat wait(1) i = i + 1 until i >= waitTime or tweenMaster.Stopped
+				if latestFinish[instance] == existingFinish then
+					latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
+				end
 				if tweenMaster.Paused == nil or tweenMaster.Paused == false then
 					serverAssignProperties(instance, propertyTable) -- assign the properties server side
 				end
 			end)
 		end
+	end
+
+	function tweenMaster:Play(Yield, SpecificClient)
+		Play(Yield, SpecificClient)
+	end
+	
+	function tweenMaster:QueuePlay(Yield, SpecificClient)
+		Play(Yield, SpecificClient, true)
 	end
 
 	function tweenMaster:Pause(SpecificClient)
@@ -136,8 +171,22 @@ if rService:IsClient() then -- OnClientEvent only works clientside
 			if tInfo ~= nil then
 				tInfo = Table_To_TweenInfo(tInfo)
 			end
-
-			if purpose == "RunTween" then
+			
+			local function runTween(queued)
+				local finishTime = os.time()+tInfo.Time
+				latestFinish[instance] = latestFinish[instance] or os.time() -- cannot be nil.
+				
+				local existingFinish = latestFinish[instance]
+				if queued and latestFinish[instance] >= os.time() then
+					local waitTime = (latestFinish[instance] - os.time())
+					latestFinish[instance] = finishTime + waitTime
+					existingFinish = latestFinish[instance]
+					wait(waitTime)
+				else
+					latestFinish[instance] = finishTime
+				end
+				
+				
 				if runningTweens[instance] ~= nil then -- im aware this will pick up paused tweens, however it doesn't matter
 					runningTweens[instance]:Cancel() -- stop previously running tween to run this one
 					warn("Canceled a previously running tween to run requested tween")
@@ -146,10 +195,21 @@ if rService:IsClient() then -- OnClientEvent only works clientside
 				local tween = tService:Create(instance, tInfo, propertyTable)
 				runningTweens[instance] = tween
 				tween:Play()
+				print("TweenStarted",os.time(),existingFinish)
 				wait(tInfo.Time or 1)
+				print("TweenComplete",os.time(),existingFinish)
+				if latestFinish[instance] == existingFinish then
+					latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
+				end
 				if runningTweens[instance] == tween then -- make sure it hasn't changed to a different tween
 					runningTweens[instance] = nil -- remove to save memory
 				end
+			end
+			
+			if purpose == "RunTween" then
+				runTween()
+			elseif purpose == "QueueTween" then
+				runTween(true) -- run as a queued tween
 			elseif purpose == "StopTween" then
 				if runningTweens[instance] ~= nil then -- check that the tween exists
 					runningTweens[instance]:Stop() -- stop the tween
