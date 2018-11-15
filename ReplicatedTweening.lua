@@ -195,9 +195,9 @@ if rService:IsClient() then -- OnClientEvent only works clientside
 				local tween = tService:Create(instance, tInfo, propertyTable)
 				runningTweens[instance] = tween
 				tween:Play()
-				print("TweenStarted",os.time(),existingFinish)
+				--print("TweenStarted",os.time(),existingFinish)
 				wait(tInfo.Time or 1)
-				print("TweenComplete",os.time(),existingFinish)
+				--print("TweenComplete",os.time(),existingFinish)
 				if latestFinish[instance] == existingFinish then
 					latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
 				end
