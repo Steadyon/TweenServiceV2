@@ -114,7 +114,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 		
 		if Yield and SpecificClient == nil then
 			local i, existingFinish = 0, latestFinish[instance]
-			repeat wait(1) i = i + 1 until i >= waitTime or tweenMaster.Stopped
+			repeat wait(0.1) i = i + 1 until i >= waitTime or tweenMaster.Stopped
 			if latestFinish[instance] == existingFinish then
 				latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
 			end
@@ -125,7 +125,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 		elseif SpecificClient == nil then
 			spawn(function()
 				local i, existingFinish = 0, latestFinish[instance]
-				repeat wait(1) i = i + 1 until i >= waitTime or tweenMaster.Stopped
+				repeat wait(0.1) i = i + 1 until i >= waitTime or tweenMaster.Stopped
 				if latestFinish[instance] == existingFinish then
 					latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
 				end
