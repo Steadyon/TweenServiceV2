@@ -87,14 +87,15 @@ end
 
 local latestFinish = {} -- this table operates on both the client and the server, server side it only stores GLOBAL tweens, local side it stores every local tween.
 
-function module:GetTweenObject(instance, tInfo, propertyTable)
+function module:Create(instance, tInfo, propertyTable)
 	local tweenMaster = {}
 	tweenMaster.DontUpdate = {} -- table of specific players that it stopped for part way.
 	tInfo = TweenInfo_To_Table(tInfo)
 	
-	local function Play(Yield, SpecificClient, Queue) -- this is on it's own as it needs to be called by both QueuePlay and Play
-		local finishTime = os.time()+tInfo[1]
-		local waitTime = tInfo[1]
+    local function Play(Yield, SpecificClient, Queue) -- this is on it's own as it needs to be called by both QueuePlay and Play 
+        local waitTime = tInfo[1] * (tInfo[4] ~= 0 and tInfo[4] or 1) * (tInfo[5] and 2 or 1)
+		local finishTime = os.time() + waitTime
+		
 		latestFinish[instance] = latestFinish[instance] or os.time() -- cannot be nil.
 		Queue = Queue or false
 		tweenMaster.Paused = false
@@ -114,7 +115,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 		
 		if Yield and SpecificClient == nil then
 			local i, existingFinish = 0, latestFinish[instance]
-			repeat wait(0.1) i = i + 1 until i >= waitTime or tweenMaster.Stopped
+			repeat wait(0.1) i = i + 0.1 until i >= waitTime or tweenMaster.Stopped
 			if latestFinish[instance] == existingFinish then
 				latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
 			end
@@ -125,7 +126,7 @@ function module:GetTweenObject(instance, tInfo, propertyTable)
 		elseif SpecificClient == nil then
 			spawn(function()
 				local i, existingFinish = 0, latestFinish[instance]
-				repeat wait(0.1) i = i + 1 until i >= waitTime or tweenMaster.Stopped
+				repeat wait(0.1) i = i + 0.1 until i >= waitTime or tweenMaster.Stopped
 				if latestFinish[instance] == existingFinish then
 					latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
 				end
