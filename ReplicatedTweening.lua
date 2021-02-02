@@ -87,6 +87,11 @@ end
 
 local latestFinish = {} -- this table operates on both the client and the server, server side it only stores GLOBAL tweens, local side it stores every local tween.
 
+-- old function proxy to new
+function module:GetTweenObject(instance, tInfo, propertyTable)
+	return module:Create(instance, tInfo, propertyTable)	
+end
+
 function module:Create(instance, tInfo, propertyTable)
 	local tweenMaster = {}
 	tweenMaster.DontUpdate = {} -- table of specific players that it stopped for part way.
