@@ -113,9 +113,9 @@ function module:Create(instance, tInfo, propertyTable)
 			latestFinish[instance] = finishTime + (latestFinish[instance] - os.time()) -- adds an entry to array with finish time of this tween (used for queueing)
 			tEvent:FireAllClients("QueueTween", instance, tInfo, propertyTable)
 		elseif Queue then
-			tEvent:FireClient("QueueTween", instance, tInfo, propertyTable) -- queue tween for specific player
+			tEvent:FireClient(SpecificClient, "QueueTween", instance, tInfo, propertyTable) -- queue tween for specific player
 		else
-			tEvent:FireClient("RunTween", instance, tInfo, propertyTable) -- play tween for specific player
+			tEvent:FireClient(SpecificClient, "RunTween", instance, tInfo, propertyTable) -- play tween for specific player
 		end
 		
 		if Yield and SpecificClient == nil then
@@ -156,7 +156,7 @@ function module:Create(instance, tInfo, propertyTable)
 			tEvent:FireAllClients("PauseTween", instance)
 		else
 			table.insert(tweenMaster.DontUpdate, SpecificClient)
-			tEvent:FireClient("PauseTween", instance)
+			tEvent:FireClient(SpecificClient, "PauseTween", instance)
 		end
 	end
 
@@ -165,7 +165,7 @@ function module:Create(instance, tInfo, propertyTable)
 			tweenMaster.Stopped = true
 			tEvent:FireAllClients("StopTween", instance)
 		else
-			tEvent:FireClient("StopTween", instance)
+			tEvent:FireClient(SpecificClient, "StopTween", instance)
 		end
 	end
 	return tweenMaster
@@ -220,7 +220,7 @@ if rService:IsClient() then -- OnClientEvent only works clientside
 				runTween(true) -- run as a queued tween
 			elseif purpose == "StopTween" then
 				if runningTweens[instance] ~= nil then -- check that the tween exists
-					runningTweens[instance]:Stop() -- stop the tween
+					runningTweens[instance]:Cancel() -- stop the tween
 					runningTweens[instance] = nil -- delete from table
 				else
 					warn("Tween being stopped does not exist.")
