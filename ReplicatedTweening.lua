@@ -7,7 +7,7 @@
 
 	Documentation:
 
-	:GetTweenObject(instance [Instance], TweenInfo [TweenInfo Object], PropertyTable [Table]) [Tween]
+	:Create(instance [Instance], TweenInfo [TweenInfo Object], PropertyTable [Table]) [Tween]
 	Parameters are exactly the same as TweenService:Create(), it returns a fake Tween object with Play,
 	Pause and Stop functions.
 
@@ -46,7 +46,7 @@
 	local CustomTweenService = require(game.ReplicatedStorage.ReplicatedTweening)
 	local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-	local tween = CustomTweenService:GetTweenObject(game.Workspace.Part, tweenInfo, {CFrame = CFrame.new(Vector3.new(0,0,0))})
+	local tween = CustomTweenService:Create(game.Workspace.Part, tweenInfo, {CFrame = CFrame.new(Vector3.new(0,0,0))})
 	tween:Play()
 --]]
 
