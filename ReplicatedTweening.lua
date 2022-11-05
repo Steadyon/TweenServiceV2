@@ -110,10 +110,10 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			waitTime = waitTime + (latestFinish[instance] - os.time())
 			latestFinish[instance] = finishTime + (latestFinish[instance] - os.time()) -- adds an entry to array with finish time of this tween (used for queueing)
 			TweenEvent:FireAllClients("QueueTween", instance, tInfo, propertyTable)
-		elseif Queue then
-			TweenEvent:FireClient("QueueTween", instance, tInfo, propertyTable) -- queue tween for specific player
-		else
-			TweenEvent:FireClient("RunTween", instance, tInfo, propertyTable) -- play tween for specific player
+		elseif Queue and SpecificClient then
+			TweenEvent:FireClient(SpecificClient, "QueueTween", instance, tInfo, propertyTable) -- queue tween for specific player
+		elseif SpecificClient then
+			TweenEvent:FireClient(SpecificClient, "RunTween", instance, tInfo, propertyTable) -- play tween for specific player
 		end
 
 		if Yield and SpecificClient == nil then
@@ -156,7 +156,7 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			TweenEvent:FireAllClients("PauseTween", instance)
 		else
 			table.insert(tweenMaster.DontUpdate, SpecificClient)
-			TweenEvent:FireClient("PauseTween", instance)
+			TweenEvent:FireClient(SpecificClient, "PauseTween", instance)
 		end
 	end
 
@@ -165,7 +165,7 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			tweenMaster.Stopped = true
 			TweenEvent:FireAllClients("StopTween", instance)
 		else
-			TweenEvent:FireClient("StopTween", instance)
+			TweenEvent:FireClient(SpecificClient, "StopTween", instance)
 		end
 	end
 	return tweenMaster
@@ -222,7 +222,7 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 			runTween(true) -- run as a queued tween
 		elseif purpose == "StopTween" then
 			if runningTweens[instance] ~= nil then -- check that the tween exists
-				runningTweens[instance]:Stop() -- stop the tween
+				runningTweens[instance]:Cancel() -- stop the tween
 				runningTweens[instance] = nil -- delete from table
 			else
 				warn("Tween being stopped does not exist or the instance itself.")
