@@ -176,6 +176,11 @@ if rService:IsClient() then -- OnClientEvent only works clientside
 	local runningTweens = {}
 
 	tEvent.OnClientEvent:Connect(function(purpose, instance, tInfo, propertyTable)
+			if instance == nil then
+				warn("Ignored tween request because instance is nil")
+				return -- prevent error if client is unaware of target instance.
+			end
+
 			if tInfo ~= nil then
 				tInfo = Table_To_TweenInfo(tInfo)
 			end
