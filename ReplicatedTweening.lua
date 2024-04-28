@@ -83,17 +83,36 @@ end
 
 --| Will change server properties for the targetted instances after client tweens are done:
 local function serverAssignProperties(instance: Instance, properties: {[string]: any})
-	print("Assigning server properties..")
+	--print("Assigning server properties..")
 	for property, value in pairs (properties) do
-		print(string.format("Assigned %s to %s", property, value))
+		--print(string.format("Assigned %s to %s", property, tostring(value)))
 		instance[property] = value
 	end
 end
 
-function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable: {[string]: any})
+function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable: {[string]: any}, SimulateServerTween: boolean?)
 	local tweenMaster = {}
 	tweenMaster.DontUpdate = {} -- table of specific players that it stopped for part way.
+    tweenMaster._SafeTweenInfo = tInfo
 	tInfo = TweenInfo_To_Table(tInfo)
+
+
+	if SimulateServerTween then
+		tweenMaster._SimulateTween = true
+        
+        -- / Create a copy of the instance in Script.SimulatedTweensFolder
+        local SimulatedTweensFolder = script:FindFirstChild("SimulatedTweensFolder")
+        if not SimulatedTweensFolder then
+            SimulatedTweensFolder = Instance.new("Folder")
+            SimulatedTweensFolder.Name = "SimulatedTweensFolder"
+            SimulatedTweensFolder.Parent = script
+        end
+
+        tweenMaster.SimulatedInstance = instance:Clone()
+        tweenMaster.SimulatedInstance.Parent = SimulatedTweensFolder
+
+        tweenMaster.SimulatedTween = TweenService:Create(tweenMaster.SimulatedInstance, tweenMaster._SafeTweenInfo, propertyTable)
+	end
 
 	local function Play(Yield, SpecificClient, Queue) -- this is on it's own as it needs to be called by both QueuePlay and Play 
 		local waitTime = tInfo[1] * (tInfo[4] ~= 0 and tInfo[4] or 1) * (tInfo[5] and 2 or 1)
@@ -114,6 +133,28 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			TweenEvent:FireClient(SpecificClient, "QueueTween", instance, tInfo, propertyTable) -- queue tween for specific player
 		elseif SpecificClient then
 			TweenEvent:FireClient(SpecificClient, "RunTween", instance, tInfo, propertyTable) -- play tween for specific player
+		end
+
+		if tweenMaster._SimulateTween then
+			-- / Run the tween on the simulated instance
+			tweenMaster.SimulatedTween:Play()
+
+            tweenMaster._PauseSimulatedTween = function()
+                tweenMaster.SimulatedTween:Pause()
+            end
+
+            tweenMaster._StopSimulatedTween = function()
+                tweenMaster.SimulatedTween:Cancel()
+            end
+
+            tweenMaster._ResumeSimulatedTween = function()
+                tweenMaster.SimulatedTween:Play()
+            end
+
+			task.spawn(function() -- Clear up the simulated instance after the tween has completed
+				tweenMaster.SimulatedTween.Completed:Wait()
+				tweenMaster.SimulatedInstance:Destroy()
+			end)
 		end
 
 		if Yield and SpecificClient == nil then
@@ -144,6 +185,10 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 
 	function tweenMaster:Play(Yield, SpecificClient)
 		Play(Yield, SpecificClient)
+
+        if tweenMaster._SimulateTween then
+            tweenMaster._ResumeSimulatedTween()
+        end
 	end
 
 	function tweenMaster:QueuePlay(Yield, SpecificClient)
@@ -158,6 +203,10 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			table.insert(tweenMaster.DontUpdate, SpecificClient)
 			TweenEvent:FireClient(SpecificClient, "PauseTween", instance)
 		end
+
+        if tweenMaster._SimulateTween then
+            tweenMaster._PauseSimulatedTween()
+        end
 	end
 
 	function tweenMaster:Stop(SpecificClient)
@@ -167,6 +216,10 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 		else
 			TweenEvent:FireClient(SpecificClient, "StopTween", instance)
 		end
+
+        if tweenMaster._SimulateTween then
+            tweenMaster._StopSimulatedTween()
+        end
 	end
 	return tweenMaster
 end
