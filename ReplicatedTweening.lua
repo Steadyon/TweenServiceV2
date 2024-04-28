@@ -198,10 +198,6 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 
 	function tweenMaster:Play(Yield, SpecificClient)
 		Play(Yield, SpecificClient)
-
-        if tweenMaster._SimulateTween then
-            tweenMaster._ResumeSimulatedTween()
-        end
 	end
 
 	function tweenMaster:QueuePlay(Yield, SpecificClient)
@@ -213,6 +209,10 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			tweenMaster._CurrentExpectedState = getInstanceCurrentSimulatedState(tweenMaster.SimulatedInstance, propertyTable)
 		end
 
+        if tweenMaster._SimulateTween then
+            tweenMaster._PauseSimulatedTween()
+        end
+
 		if SpecificClient == nil then
 			tweenMaster.Paused = true
 			TweenEvent:FireAllClients("PauseTween", instance, nil, nil, tweenMaster._TweenID, tweenMaster._CurrentExpectedState, tick())
@@ -221,15 +221,16 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			TweenEvent:FireClient(SpecificClient, "PauseTween", instance, nil, nil,  tweenMaster._TweenID, tweenMaster._CurrentExpectedState, tick())
 		end
 
-        if tweenMaster._SimulateTween then
-            tweenMaster._PauseSimulatedTween()
-        end
 	end
 
 	function tweenMaster:Stop(SpecificClient)
 		if tweenMaster._SimulateTween then
 			tweenMaster._CurrentExpectedState = getInstanceCurrentSimulatedState(tweenMaster.SimulatedInstance, propertyTable)
 		end
+
+        if tweenMaster._SimulateTween then
+            tweenMaster._StopSimulatedTween()
+        end
 
 		if SpecificClient == nil then
 			tweenMaster.Stopped = true
@@ -238,9 +239,6 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			TweenEvent:FireClient(SpecificClient, "StopTween", instance, nil, nil,  tweenMaster._TweenID, tweenMaster._CurrentExpectedState, tick())
 		end
 
-        if tweenMaster._SimulateTween then
-            tweenMaster._StopSimulatedTween()
-        end
 	end
 	return tweenMaster
 end
@@ -251,6 +249,7 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 
 	local runningTweensById = {}
 	TweenEvent.OnClientEvent:Connect(function(purpose, instance, tInfo, propertyTable, tweenID, expectedProperties, expectedStartTime)
+        local tInfoTable = tInfo
 		if tInfo ~= nil then
 			tInfo = Table_To_TweenInfo(tInfo)
 		end
@@ -263,8 +262,9 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 		if expectedStartTime and tInfo then
 			shortenBy = tick() - expectedStartTime
 
-			-- Recreate TweenInfo with the shortened time
-			tInfo = TweenInfo.new(tInfo.Time - shortenBy, tInfo.EasingStyle, tInfo.EasingDirection, tInfo.RepeatCount, tInfo.Reverses, tInfo.DelayTime)
+			-- Recreate TweenInfo with the shortened time using tInfoTable
+			tInfo = TweenInfo.new(tInfoTable[1] - shortenBy, tInfoTable[2], tInfoTable[3], tInfoTable[4], tInfoTable[5], tInfoTable[6])
+            print ("Shortened by", shortenBy)
 		end
 
 		local function runTween(queued)
@@ -287,10 +287,15 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 				warn(string.format('Cancelled a previously running tween for instance "%s" tor run a new requested one.', instance.Name))
 			end
 
+            local tween 
+            if runningTweensById[instance] == tweenID then
+                tween = runningTweens[instance]
+            else 
+                tween = TweenService:Create(instance, tInfo, propertyTable)
+            end
+            runningTweens[instance] = tween
+            tween:Play()
 			runningTweensById[instance] = tweenID
-			local tween = TweenService:Create(instance, tInfo, propertyTable)
-			runningTweens[instance] = tween
-			tween:Play()
 			
 			--print("TweenStarted",os.time(),existingFinish)
 			tween.Completed:Wait()
