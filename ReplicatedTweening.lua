@@ -1,6 +1,3 @@
---# selene: allow(multiple_statements)
---# selene: allow(shadowing)
-
 -- V.2.2
 
 --[[Created by SteadyOn
