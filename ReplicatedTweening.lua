@@ -52,17 +52,21 @@
 
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local TweenEvent = script:WaitForChild("TweenEvent", 5)
+local TweenEvent = script:FindFirstChild("TweenEvent")
 local HttpService = game:GetService("HttpService")
 
 local TweenModule = {}
 local latestFinish = {} -- this table operates on both the client and the server, server side it only stores GLOBAL tweens, local side it stores every local tween.
 
 --| if there is no tween event, it will be created and parented to the script.
-if TweenEvent == nil and RunService:IsServer() then
-	TweenEvent = Instance.new("RemoteEvent")
-	TweenEvent.Name = "TweenEvent"
-	TweenEvent.Parent = script
+if TweenEvent == nil then
+    if RunService:IsServer() then
+        TweenEvent = Instance.new("RemoteEvent")
+        TweenEvent.Name = "TweenEvent"
+        TweenEvent.Parent = script
+    else
+        TweenEvent = script:WaitForChild("TweenEvent")
+    end
 end
 
 --| Converting TweenInfo to an array is needed to pass it through the remote event:
@@ -127,23 +131,23 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 
 	local function Play(Yield, SpecificClient, Queue) -- this is on it's own as it needs to be called by both QueuePlay and Play 
 		local waitTime = tInfo[1] * (tInfo[4] ~= 0 and tInfo[4] or 1) * (tInfo[5] and 2 or 1)
-		local finishTime = os.time() + waitTime
+		local finishTime = workspace:GetServerTimeNow() + waitTime
 
-		latestFinish[instance] = latestFinish[instance] or os.time() -- cannot be nil.
+		latestFinish[instance] = latestFinish[instance] or workspace:GetServerTimeNow() -- cannot be nil.
 		Queue = Queue or false
 		tweenMaster.Paused = false
 
 		if SpecificClient == nil and not Queue then
 			latestFinish[instance] = finishTime -- adds an entry to array with finish time of this tween (used for queueing)
-			TweenEvent:FireAllClients("RunTween", instance, tInfo, propertyTable, tweenMaster._TweenID, nil, tick())
+			TweenEvent:FireAllClients("RunTween", instance, tInfo, propertyTable, tweenMaster._TweenID, nil, workspace:GetServerTimeNow())
 		elseif Queue and SpecificClient == nil then -- deal with queued tweens
-			waitTime = waitTime + (latestFinish[instance] - os.time())
-			latestFinish[instance] = finishTime + (latestFinish[instance] - os.time()) -- adds an entry to array with finish time of this tween (used for queueing)
-			TweenEvent:FireAllClients("QueueTween", instance, tInfo, propertyTable, tweenMaster._TweenID, nil, tick())
+			waitTime = waitTime + (latestFinish[instance] - workspace:GetServerTimeNow())
+			latestFinish[instance] = finishTime + (latestFinish[instance] - workspace:GetServerTimeNow()) -- adds an entry to array with finish time of this tween (used for queueing)
+			TweenEvent:FireAllClients("QueueTween", instance, tInfo, propertyTable, tweenMaster._TweenID, nil, workspace:GetServerTimeNow())
 		elseif Queue and SpecificClient then
-			TweenEvent:FireClient(SpecificClient, "QueueTween", instance, tInfo, propertyTable, tweenMaster._TweenID, nil, tick()) -- queue tween for specific player
+			TweenEvent:FireClient(SpecificClient, "QueueTween", instance, tInfo, propertyTable, tweenMaster._TweenID, nil, workspace:GetServerTimeNow()) -- queue tween for specific player
 		elseif SpecificClient then
-			TweenEvent:FireClient(SpecificClient, "RunTween", instance, tInfo, propertyTable, tweenMaster._TweenID, nil, tick()) -- play tween for specific player
+			TweenEvent:FireClient(SpecificClient, "RunTween", instance, tInfo, propertyTable, tweenMaster._TweenID, nil, workspace:GetServerTimeNow()) -- play tween for specific player
 		end
 
 		if tweenMaster._SimulateTween then
@@ -215,10 +219,10 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 
 		if SpecificClient == nil then
 			tweenMaster.Paused = true
-			TweenEvent:FireAllClients("PauseTween", instance, nil, nil, tweenMaster._TweenID, tweenMaster._CurrentExpectedState, tick())
+			TweenEvent:FireAllClients("PauseTween", instance, nil, nil, tweenMaster._TweenID, tweenMaster._CurrentExpectedState, workspace:GetServerTimeNow())
 		else
 			table.insert(tweenMaster.DontUpdate, SpecificClient)
-			TweenEvent:FireClient(SpecificClient, "PauseTween", instance, nil, nil,  tweenMaster._TweenID, tweenMaster._CurrentExpectedState, tick())
+			TweenEvent:FireClient(SpecificClient, "PauseTween", instance, nil, nil,  tweenMaster._TweenID, tweenMaster._CurrentExpectedState, workspace:GetServerTimeNow())
 		end
 
 	end
@@ -234,9 +238,9 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 
 		if SpecificClient == nil then
 			tweenMaster.Stopped = true
-			TweenEvent:FireAllClients("StopTween", instance, nil, nil,  tweenMaster._TweenID, tweenMaster._CurrentExpectedState, tick())
+			TweenEvent:FireAllClients("StopTween", instance, nil, nil,  tweenMaster._TweenID, tweenMaster._CurrentExpectedState, workspace:GetServerTimeNow())
 		else
-			TweenEvent:FireClient(SpecificClient, "StopTween", instance, nil, nil,  tweenMaster._TweenID, tweenMaster._CurrentExpectedState, tick())
+			TweenEvent:FireClient(SpecificClient, "StopTween", instance, nil, nil,  tweenMaster._TweenID, tweenMaster._CurrentExpectedState, workspace:GetServerTimeNow())
 		end
 
 	end
@@ -260,20 +264,20 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 
 		local shortenBy = 0
 		if expectedStartTime and tInfo then
-			shortenBy = tick() - expectedStartTime
+			shortenBy = workspace:GetServerTimeNow() - expectedStartTime
 
 			-- Recreate TweenInfo with the shortened time using tInfoTable
 			tInfo = TweenInfo.new(tInfoTable[1] - shortenBy, tInfoTable[2], tInfoTable[3], tInfoTable[4], tInfoTable[5], tInfoTable[6])
-            print ("Shortened by", shortenBy)
+            -- print ("Shortened by", shortenBy)
 		end
 
 		local function runTween(queued)
-			local finishTime = os.time() + tInfo.Time
-			latestFinish[instance] = latestFinish[instance] or os.time() -- cannot be nil.
+			local finishTime = workspace:GetServerTimeNow() + tInfo.Time
+			latestFinish[instance] = latestFinish[instance] or workspace:GetServerTimeNow() -- cannot be nil.
 
 			local existingFinish = latestFinish[instance]
-			if queued and latestFinish[instance] >= os.time() then
-				local waitTime = (latestFinish[instance] - os.time())
+			if queued and latestFinish[instance] >= workspace:GetServerTimeNow() then
+				local waitTime = (latestFinish[instance] - workspace:GetServerTimeNow())
 				latestFinish[instance] = finishTime + waitTime
 				existingFinish = latestFinish[instance]
 				task.wait(waitTime)
@@ -297,9 +301,9 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
             tween:Play()
 			runningTweensById[instance] = tweenID
 			
-			--print("TweenStarted",os.time(),existingFinish)
+			--print("TweenStarted",workspace:GetServerTimeNow(),existingFinish)
 			tween.Completed:Wait()
-			--print("TweenComplete",os.time(),existingFinish)
+			--print("TweenComplete",workspace:GetServerTimeNow(),existingFinish)
 			if latestFinish[instance] == existingFinish then
 				latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
 			end
