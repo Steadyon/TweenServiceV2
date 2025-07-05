@@ -177,8 +177,10 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			if latestFinish[instance] == existingFinish then
 				latestFinish[instance] = nil
 			end
-			if not tweenMaster.Paused and not tInfo[5] then
-				serverAssignProperties(instance, propertyTable)
+			if not tweenMaster.Paused then
+				if not tInfo[5] then
+					serverAssignProperties(instance, propertyTable)
+				end
 				tweenMaster.HasFinished = true
 			end
 		end
