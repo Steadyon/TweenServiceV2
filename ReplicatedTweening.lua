@@ -166,36 +166,29 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 				tweenMaster.SimulatedTween:Play()
 			end
 
-			task.spawn(function() -- Clear up the simulated instance after the tween has completed
-				tweenMaster.SimulatedTween.Completed:Wait()
+			tweenMaster.SimulatedTween.Completed:Once(function() -- Clear up the simulated instance after the tween has completed
 				tweenMaster.SimulatedInstance:Destroy()
 			end)
 		end
 
-		if Yield and SpecificClient == nil then
+		local function applyTween()
 			local i, existingFinish = 0, latestFinish[instance]
 			repeat task.wait(0.05) i += 0.05 until i >= waitTime or tweenMaster.Stopped
-			
 			if latestFinish[instance] == existingFinish then
-				latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
+				latestFinish[instance] = nil
 			end
-			if not tweenMaster.Paused then
-				serverAssignProperties(instance, propertyTable) -- assign the properties server side
+			if not tweenMaster.Paused and not tInfo[5] then
+				serverAssignProperties(instance, propertyTable)
 				tweenMaster.HasFinished = true
 			end
-		elseif SpecificClient == nil then
-			task.spawn(function()
-				local i, existingFinish = 0, latestFinish[instance]
-				repeat task.wait(0.05) i += 0.05 until i >= waitTime or tweenMaster.Stopped
-				
-				if latestFinish[instance] == existingFinish then
-					latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
-				end
-				if not tweenMaster.Paused then
-					serverAssignProperties(instance, propertyTable) -- assign the properties server side
-					tweenMaster.HasFinished = true
-				end
-			end)
+		end
+
+		if SpecificClient == nil then
+			if Yield then
+				applyTween()
+			else
+				task.spawn(applyTween)
+			end
 		end
 	end
 
@@ -258,7 +251,7 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 			tInfo = Table_To_TweenInfo(tInfo)
 		end
 
-		if expectedProperties then
+		if expectedProperties and not tInfo[5] then
 			serverAssignProperties(instance, expectedProperties)
 		end
 
