@@ -60,13 +60,13 @@ local latestFinish = {} -- this table operates on both the client and the server
 
 --| if there is no tween event, it will be created and parented to the script.
 if TweenEvent == nil then
-    if RunService:IsServer() then
-        TweenEvent = Instance.new("RemoteEvent")
-        TweenEvent.Name = "TweenEvent"
-        TweenEvent.Parent = script
-    else
-        TweenEvent = script:WaitForChild("TweenEvent")
-    end
+	if RunService:IsServer() then
+		TweenEvent = Instance.new("RemoteEvent")
+		TweenEvent.Name = "TweenEvent"
+		TweenEvent.Parent = script
+	else
+		TweenEvent = script:WaitForChild("TweenEvent")
+	end
 end
 
 --| Converting TweenInfo to an array is needed to pass it through the remote event:
@@ -106,7 +106,7 @@ end
 function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable: {[string]: any}, SimulateServerTween: boolean?)
 	local tweenMaster = {}
 	tweenMaster.DontUpdate = {} -- table of specific players that it stopped for part way.
-    tweenMaster._SafeTweenInfo = tInfo
+	tweenMaster._SafeTweenInfo = tInfo
 	tweenMaster._TweenID = HttpService:GenerateGUID(false)
 	tweenMaster.HasFinished = false
 	tInfo = TweenInfo_To_Table(tInfo)
@@ -114,19 +114,19 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 
 	if SimulateServerTween then
 		tweenMaster._SimulateTween = true
-        
-        -- / Create a copy of the instance in Script.SimulatedTweensFolder
-        local SimulatedTweensFolder = script:FindFirstChild("SimulatedTweensFolder")
-        if not SimulatedTweensFolder then
-            SimulatedTweensFolder = Instance.new("Folder")
-            SimulatedTweensFolder.Name = "SimulatedTweensFolder"
-            SimulatedTweensFolder.Parent = script
-        end
+		
+		-- / Create a copy of the instance in Script.SimulatedTweensFolder
+		local SimulatedTweensFolder = script:FindFirstChild("SimulatedTweensFolder")
+		if not SimulatedTweensFolder then
+			SimulatedTweensFolder = Instance.new("Folder")
+			SimulatedTweensFolder.Name = "SimulatedTweensFolder"
+			SimulatedTweensFolder.Parent = script
+		end
 
-        tweenMaster.SimulatedInstance = instance:Clone()
-        tweenMaster.SimulatedInstance.Parent = SimulatedTweensFolder
+		tweenMaster.SimulatedInstance = instance:Clone()
+		tweenMaster.SimulatedInstance.Parent = SimulatedTweensFolder
 
-        tweenMaster.SimulatedTween = TweenService:Create(tweenMaster.SimulatedInstance, tweenMaster._SafeTweenInfo, propertyTable)
+		tweenMaster.SimulatedTween = TweenService:Create(tweenMaster.SimulatedInstance, tweenMaster._SafeTweenInfo, propertyTable)
 	end
 
 	local function Play(Yield, SpecificClient, Queue) -- this is on it's own as it needs to be called by both QueuePlay and Play 
@@ -154,49 +154,43 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			-- / Run the tween on the simulated instance
 			tweenMaster.SimulatedTween:Play()
 
-            tweenMaster._PauseSimulatedTween = function()
-                tweenMaster.SimulatedTween:Pause()
-            end
+			tweenMaster._PauseSimulatedTween = function()
+				tweenMaster.SimulatedTween:Pause()
+			end
 
-            tweenMaster._StopSimulatedTween = function()
-                tweenMaster.SimulatedTween:Cancel()
-            end
+			tweenMaster._StopSimulatedTween = function()
+				tweenMaster.SimulatedTween:Cancel()
+			end
 
-            tweenMaster._ResumeSimulatedTween = function()
-                tweenMaster.SimulatedTween:Play()
-            end
+			tweenMaster._ResumeSimulatedTween = function()
+				tweenMaster.SimulatedTween:Play()
+			end
 
-			task.spawn(function() -- Clear up the simulated instance after the tween has completed
-				tweenMaster.SimulatedTween.Completed:Wait()
+			tweenMaster.SimulatedTween.Completed:Once(function() -- Clear up the simulated instance after the tween has completed
 				tweenMaster.SimulatedInstance:Destroy()
 			end)
 		end
 
-		if Yield and SpecificClient == nil then
+		local function applyTween()
 			local i, existingFinish = 0, latestFinish[instance]
-			repeat task.wait(0.05) i = i + 0.05 until i >= waitTime or tweenMaster.Stopped
-			
+			repeat task.wait(0.05) i += 0.05 until i >= waitTime or tweenMaster.Stopped
 			if latestFinish[instance] == existingFinish then
-				latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
+				latestFinish[instance] = nil
 			end
-			if tweenMaster.Paused == nil or tweenMaster.Paused == false then
-				serverAssignProperties(instance, propertyTable) -- assign the properties server side
+			if not tweenMaster.Paused then
+				if not tInfo[5] then
+					serverAssignProperties(instance, propertyTable)
+				end
 				tweenMaster.HasFinished = true
 			end
-			
-		elseif SpecificClient == nil then
-			task.spawn(function()
-				local i, existingFinish = 0, latestFinish[instance]
-				repeat task.wait(0.05) i = i + 0.05 until i >= waitTime or tweenMaster.Stopped
-				
-				if latestFinish[instance] == existingFinish then
-					latestFinish[instance] = nil -- clear memory if this instance hasn't already been retweened.
-				end
-				if tweenMaster.Paused == nil or tweenMaster.Paused == false then
-					serverAssignProperties(instance, propertyTable) -- assign the properties server side
-					tweenMaster.HasFinished = true
-				end
-			end)
+		end
+
+		if SpecificClient == nil then
+			if Yield then
+				applyTween()
+			else
+				task.spawn(applyTween)
+			end
 		end
 	end
 
@@ -213,9 +207,9 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			tweenMaster._CurrentExpectedState = getInstanceCurrentSimulatedState(tweenMaster.SimulatedInstance, propertyTable)
 		end
 
-        if tweenMaster._SimulateTween then
-            tweenMaster._PauseSimulatedTween()
-        end
+		if tweenMaster._SimulateTween then
+			tweenMaster._PauseSimulatedTween()
+		end
 
 		if SpecificClient == nil then
 			tweenMaster.Paused = true
@@ -232,9 +226,9 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 			tweenMaster._CurrentExpectedState = getInstanceCurrentSimulatedState(tweenMaster.SimulatedInstance, propertyTable)
 		end
 
-        if tweenMaster._SimulateTween then
-            tweenMaster._StopSimulatedTween()
-        end
+		if tweenMaster._SimulateTween then
+			tweenMaster._StopSimulatedTween()
+		end
 
 		if SpecificClient == nil then
 			tweenMaster.Stopped = true
@@ -253,12 +247,13 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 
 	local runningTweensById = {}
 	TweenEvent.OnClientEvent:Connect(function(purpose, instance, tInfo, propertyTable, tweenID, expectedProperties, expectedStartTime)
-        local tInfoTable = tInfo
+		if not instance then return end
+		local tInfoTable = tInfo
 		if tInfo ~= nil then
 			tInfo = Table_To_TweenInfo(tInfo)
 		end
 
-		if expectedProperties then
+		if expectedProperties and not tInfo[5] then
 			serverAssignProperties(instance, expectedProperties)
 		end
 
@@ -268,7 +263,7 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 
 			-- Recreate TweenInfo with the shortened time using tInfoTable
 			tInfo = TweenInfo.new(tInfoTable[1] - shortenBy, tInfoTable[2], tInfoTable[3], tInfoTable[4], tInfoTable[5], tInfoTable[6])
-            -- print ("Shortened by", shortenBy)
+			-- print ("Shortened by", shortenBy)
 		end
 
 		local function runTween(queued)
@@ -285,20 +280,19 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 				latestFinish[instance] = finishTime
 			end
 
-
 			if runningTweens[instance] ~= nil and runningTweens[instance].PlaybackState ~= Enum.PlaybackState.Paused and runningTweensById[instance] ~= tweenID then -- im aware this will pick up paused tweens, however it doesn't matter (it did matter, i've fixed it now)
 				runningTweens[instance]:Cancel() -- stop previously running tween to run this one
 				warn(string.format('Cancelled a previously running tween for instance "%s" tor run a new requested one.', instance.Name))
 			end
 
-            local tween 
-            if runningTweensById[instance] == tweenID then
-                tween = runningTweens[instance]
-            else 
-                tween = TweenService:Create(instance, tInfo, propertyTable)
-            end
-            runningTweens[instance] = tween
-            tween:Play()
+			local tween
+			if runningTweensById[instance] == tweenID then
+				tween = runningTweens[instance]
+			else
+				tween = TweenService:Create(instance, tInfo, propertyTable)
+			end
+			runningTweens[instance] = tween
+			tween:Play()
 			runningTweensById[instance] = tweenID
 			
 			--print("TweenStarted",workspace:GetServerTimeNow(),existingFinish)
@@ -312,21 +306,21 @@ if RunService:IsClient() then -- OnClientEvent only works clientside
 				runningTweens[instance] = nil -- remove to save memory
 			end
 		end
-
+		local tween = runningTweens[instance]
 		if purpose == "RunTween" then
 			runTween()
 		elseif purpose == "QueueTween" then
 			runTween(true) -- run as a queued tween
 		elseif purpose == "StopTween" then
-			if runningTweens[instance] ~= nil then -- check that the tween exists
-				runningTweens[instance]:Cancel() -- stop the tween
+			if tween ~= nil then -- check that the tween exists
+				tween:Cancel() -- stop the tween
 				runningTweens[instance] = nil -- delete from table
 			else
 				warn("Tween being stopped does not exist or the instance itself.")
 			end
 		elseif purpose == "PauseTween" then
-			if runningTweens[instance] ~= nil then -- check that the tween exists
-				runningTweens[instance]:Pause() -- pause the tween
+			if tween ~= nil then -- check that the tween exists
+				tween:Pause() -- pause the tween
 			else
 				warn("Tween being paused does not exist.")
 			end
