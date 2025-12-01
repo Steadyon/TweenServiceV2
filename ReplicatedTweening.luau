@@ -136,6 +136,7 @@ function TweenModule:Create(instance: Instance, tInfo: TweenInfo, propertyTable:
 		latestFinish[instance] = latestFinish[instance] or workspace:GetServerTimeNow() -- cannot be nil.
 		Queue = Queue or false
 		tweenMaster.Paused = false
+		tweenMaster.HasFinished = false
 
 		if SpecificClient == nil and not Queue then
 			latestFinish[instance] = finishTime -- adds an entry to array with finish time of this tween (used for queueing)
